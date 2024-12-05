@@ -1,6 +1,6 @@
 import { parseArgs } from "util";
 
-const { values, positionals } = parseArgs({
+const { values } = parseArgs({
   args: Bun.argv,
   options: {
     part: {
