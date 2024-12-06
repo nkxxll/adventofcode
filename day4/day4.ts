@@ -78,6 +78,18 @@ function part1(text: string) {
   res += getCount(diagonalsToprightDownleft);
   console.log(res);
 }
+
+function getCount(row: string[]) {
+  let res = 0;
+  for (let i = 0; i < row.length; i++) {
+    const xmasMatches = row[i].match(XMAS);
+    const samxMatches = row[i].match(SAMX);
+    res += xmasMatches?.length || 0;
+    res += samxMatches?.length || 0;
+  }
+  return res;
+}
+
 function part2(text: string) {
   let res = 0;
   const split = text.split("\n");
