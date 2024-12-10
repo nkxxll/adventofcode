@@ -1,4 +1,4 @@
-# adventofcode
+# Advent of Code
 
 To install dependencies:
 
@@ -9,7 +9,5 @@ bun install
 To run:
 
 ```bash
-bun run index.ts
+./runall.sh [-t test]
 ```
-
-This project was created using `bun init` in bun v1.1.29. [Bun](https://bun.sh) is a fast all-in-one JavaScript runtime.
