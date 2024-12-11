@@ -6,7 +6,7 @@ To install dependencies:
 bun install
 ```
 
-To run:
+To run all days with Bun:
 
 ```bash
 ./runall.sh [-t test]
