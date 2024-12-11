@@ -56,6 +56,7 @@ function part1(text: string) {
       }
       if (res === line.result) {
         totalRes += line.result;
+        break;
       }
     }
   }
@@ -64,13 +65,16 @@ function part1(text: string) {
 
 function parseLine(line: string): Line {
   let [result, rest] = line.split(":");
-  let numbers = rest.split(" ").map((x) => {
-    return parseInt(x);
-  });
+  let numbers = rest
+    .trim()
+    .split(" ")
+    .map((x) => {
+      return parseInt(x);
+    });
   return {
     result: parseInt(result),
     numbers: numbers,
-    permutations: makePermutations(numbers.length),
+    permutations: makePermutations(numbers.length - 1),
   };
 }
 
@@ -81,10 +85,9 @@ function makePermutationsClosure() {
       return cache.get(length)!;
     }
     let results = [];
-    for (let i = 0; i < (length - 1) ** 2; i++) {
-      results.push(i.toString(2).padStart(length - 1, "0"));
+    for (let i = 0; i < 2 ** length; i++) {
+      results.push(i.toString(2).padStart(length, "0"));
     }
-    console.log(results);
     cache.set(length, results);
     return results;
   }
