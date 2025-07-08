@@ -16,7 +16,6 @@ pub fn main() !void {
     const buffer = try read_lines("input.txt", allocator);
     var lines = std.mem.splitScalar(u8, buffer, '\n');
     defer allocator.free(buffer);
-    const max = std.math.maxInt(isize);
 
     var count: usize = 0;
     while (lines.next()) |line| {
@@ -27,14 +26,21 @@ pub fn main() !void {
         const second = if (line_split.next()) |number| try std.fmt.parseInt(isize, number, 10) else @panic("number is not there");
         // direction is is true if down and up if false
         const direction = first > second;
-        var last: isize = if (direction) max else 0;
         line_split.reset();
+        _ = line_split.next();
+        var last: isize = first;
         while (line_split.next()) |number| {
             const value = try std.fmt.parseInt(isize, number, 10);
-            if (((direction and last <= value) or
-                (!direction and last >= last)) and
-                (@abs(last - value) > 0 and @abs(last - value) < 4))
-            {
+            const distance = @abs(value - last);
+            if (distance < 1 or distance > 3) {
+                is_ok = false;
+                break;
+            }
+            if (direction and last <= value) {
+                is_ok = false;
+                break;
+            }
+            if (!direction and last >= value) {
                 is_ok = false;
                 break;
             }
