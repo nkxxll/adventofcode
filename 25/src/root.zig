@@ -1,5 +1,8 @@
 const std = @import("std");
 const assert = std.debug.assert;
+const Allocator = std.mem.Allocator;
+const CharScalarSplitIterator = std.mem.SplitIterator(u8, .scalar);
+const ArrayList = std.ArrayList;
 
 pub const Task = enum {
     one,
@@ -11,6 +14,89 @@ fn openFile(day: u16, is_test: bool) !std.fs.File {
     const file_name = if (!is_test) try std.fmt.bufPrint(&buf, "inputs/{d}.txt", .{day}) else try std.fmt.bufPrint(&buf, "inputs/{d}test.txt", .{day});
     const file = try std.fs.cwd().openFile(file_name, .{});
     return file;
+}
+
+fn readAll(file: std.fs.File, allocator: Allocator) ![]const u8 {
+    const end = try file.getEndPos();
+    const buffer = try allocator.alloc(u8, end);
+    var reader = file.reader(buffer);
+    const reader_interface = &reader.interface;
+
+    try reader_interface.readSliceAll(buffer);
+    return buffer;
+}
+
+pub fn dayFive(task: Task, is_test: bool) !usize {
+    _ = task;
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    const allocator = gpa.allocator();
+    defer {
+        if (gpa.deinit() != .ok) {
+            std.debug.print("Memory leak detected!\n", .{});
+            std.process.exit(1);
+        }
+    }
+    const file = try openFile(5, is_test);
+    const input = try readAll(file, allocator);
+    defer allocator.free(input);
+    var sum: usize = 0;
+    var split = std.mem.splitSequence(u8, input, "\n\n");
+    var ranges = std.mem.splitScalar(u8, split.first(), '\n');
+    var ids = std.mem.splitScalar(u8, split.next().?, '\n');
+    var map = std.AutoHashMap(usize, bool).init(allocator);
+    defer map.deinit();
+    while (ids.next()) |id| {
+        const id_int = try std.fmt.parseInt(usize, id, 10);
+        try map.put(id_int, false);
+    }
+
+    while (ranges.next()) |range| {
+        var range_split = std.mem.splitScalar(u8, range, '-');
+        const first = try std.fmt.parseInt(usize, range_split.first(), 10);
+        const second = try std.fmt.parseInt(usize, range_split.next().?, 10);
+        for (first..second + 1) |idx| {
+            if (map.getPtr(idx)) |fresh| {
+                fresh.* = true;
+            }
+        }
+    }
+
+    var keyIter = map.keyIterator();
+    while (keyIter.next()) |key| {
+        if (map.get(key.*)) |fresh| {
+            if (fresh) sum += 1;
+        }
+    }
+    return sum;
+}
+
+fn getIndexOfHighestDigit(line: []const u8) usize {
+    var max_index: usize = 0;
+    var max_value: u8 = 0;
+
+    for (line, 0..) |char, index| {
+        if (char > max_value) {
+            max_value = char;
+            max_index = index;
+        }
+    }
+
+    return max_index;
+}
+
+fn getBiggestNumber(line: []const u8, comptime digits: usize, allocator: Allocator) !usize {
+    var number: [digits]u8 = undefined;
+    var remaining = try allocator.dupe(u8, line);
+    defer allocator.free(remaining);
+    for (0..digits) |index| {
+        const min_remaining = digits - index;
+        const index_of_biggest = getIndexOfHighestDigit(remaining[0 .. remaining.len - min_remaining + 1]);
+        number[index] = remaining[index_of_biggest];
+        const new_remaining = try allocator.dupe(u8, remaining[index_of_biggest + 1 ..]);
+        allocator.free(remaining);
+        remaining = new_remaining;
+    }
+    return try std.fmt.parseInt(usize, &number, 10);
 }
 
 fn getNumber2(line: []const u8, i: usize, j: usize) !usize {
@@ -56,10 +142,117 @@ fn getNumber12(
     return num;
 }
 
+fn checkOutside(lines: []const []const u8, line_idx: isize, char_idx: isize) bool {
+    if (line_idx >= lines.len or line_idx < 0) return true;
+    if (char_idx >= lines[0].len or char_idx < 0) return true;
+    return false;
+}
+
+fn getAllAdjacentRolls(lines: []const []const u8, line_idx: usize, char_idx: usize) usize {
+    var sum: usize = 0;
+    for (0..3) |y_idx| {
+        const y = @as(isize, @intCast(y_idx)) - 1;
+        for (0..3) |x_idx| {
+            const x = @as(isize, @intCast(x_idx)) - 1;
+            if (y == 0 and x == 0) continue;
+            const next_y = @as(isize, @intCast(line_idx)) + y;
+            const next_x = @as(isize, @intCast(char_idx)) + x;
+            if (checkOutside(lines, next_y, next_x)) continue;
+            if (lines[@as(usize, @intCast(next_y))][@as(usize, @intCast(next_x))] == '@') sum += 1;
+        }
+    }
+    return sum;
+}
+
+fn interatorToOwnedSlice(comptime T: type, iterator: *CharScalarSplitIterator, allocator: Allocator) ![]T {
+    var arraylist = try ArrayList(T).initCapacity(allocator, 64);
+    defer arraylist.deinit(allocator);
+
+    while (iterator.next()) |item| {
+        const dupe_item: []u8 = try allocator.dupe(u8, item);
+        try arraylist.append(allocator, dupe_item);
+    }
+
+    return try arraylist.toOwnedSlice(allocator);
+}
+
+fn dayFourRec(lines: [][]u8, last_sum: usize) usize {
+    var sum: usize = 0;
+    for (lines, 0..) |line, line_idx| {
+        for (0..line.len) |char_idx| {
+            if (line[char_idx] == '@') {
+                const rolls = getAllAdjacentRolls(lines, line_idx, char_idx);
+                if (rolls < 4) {
+                    sum += 1;
+                    lines[line_idx][char_idx] = '.';
+                }
+            }
+        }
+    }
+    if (sum == 0) return last_sum;
+    return dayFourRec(lines, last_sum + sum);
+}
+
+pub fn dayFour(task: Task, is_test: bool) !usize {
+    var file = try openFile(4, is_test);
+
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    const allocator = gpa.allocator();
+    defer {
+        if (gpa.deinit() != .ok) {
+            std.debug.print("Memory leak detected!\n", .{});
+            std.process.exit(1);
+        }
+    }
+
+    const end = try file.getEndPos();
+    const buffer = try allocator.alloc(u8, end);
+    defer allocator.free(buffer);
+    var reader = file.reader(buffer);
+    const reader_interface = &reader.interface;
+
+    try reader_interface.readSliceAll(buffer);
+
+    var lines_split = std.mem.splitScalar(u8, buffer, '\n');
+    const lines = try interatorToOwnedSlice([]u8, &lines_split, allocator);
+    defer {
+        for (lines) |line| {
+            allocator.free(line);
+        }
+        allocator.free(lines);
+    }
+    var sum: usize = 0;
+    switch (task) {
+        .one => {
+            for (lines, 0..) |line, line_idx| {
+                for (0..line.len) |char_idx| {
+                    if (line[char_idx] == '@') {
+                        const rolls = getAllAdjacentRolls(lines, line_idx, char_idx);
+                        if (rolls < 4) sum += 1;
+                    }
+                }
+            }
+        },
+        .two => {
+            sum = dayFourRec(lines, 0);
+        },
+    }
+    return sum;
+}
+
 pub fn dayThree(task: Task, is_test: bool) !usize {
     var file = try openFile(3, is_test);
 
     defer file.close();
+
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    const allocator = gpa.allocator();
+    defer {
+        if (gpa.deinit() != .ok) {
+            std.debug.print("Memory leak detected!\n", .{});
+            std.process.exit(1);
+        }
+    }
 
     // Things are _a lot_ slower if we don't use a BufferedReader
     var buffer: [1024]u8 = undefined;
@@ -69,47 +262,18 @@ pub fn dayThree(task: Task, is_test: bool) !usize {
     var sum: usize = 0;
     while (true) {
         var max: usize = 0;
-        const line = reader_interface.takeDelimiterExclusive('\n') catch |err| switch (err) {
-            error.EndOfStream => break,
+        const line = reader_interface.takeDelimiter('\n') catch |err| switch (err) {
             else => return err,
-        };
+        } orelse break;
+
+        assert(line.len != 0);
 
         switch (task) {
             .one => {
-                for (0..line.len - 1) |i| {
-                    for (i + 1..line.len) |j| {
-                        const num = try getNumber2(line, i, j);
-                        max = @max(max, num);
-                    }
-                }
+                max = try getBiggestNumber(line, 2, allocator);
             },
             .two => {
-                for (0..line.len - 1) |i| {
-                    for (i + 1..line.len) |j| {
-                        for (j + 1..line.len) |k| {
-                            for (k + 1..line.len) |l| {
-                                for (l + 1..line.len) |m| {
-                                    for (m + 1..line.len) |n| {
-                                        for (n + 1..line.len) |o| {
-                                            for (o + 1..line.len) |p| {
-                                                for (p + 1..line.len) |q| {
-                                                    for (q + 1..line.len) |r| {
-                                                        for (r + 1..line.len) |s| {
-                                                            for (s + 1..line.len) |t| {
-                                                                const num = try getNumber12(line, i, j, k, l, m, n, o, p, q, r, s, t);
-                                                                max = @max(max, num);
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+                max = try getBiggestNumber(line, 12, allocator);
             },
         }
         sum += max;

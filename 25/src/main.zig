@@ -1,10 +1,11 @@
 const std = @import("std");
 const aoc25 = @import("aoc25");
+const DAYS = 5;
 
 fn printHelp(stdout: *std.io.Writer) !void {
     try stdout.print("Usage: zig build run -- --day <number>\n\n", .{});
     try stdout.print("Options:\n", .{});
-    try stdout.print("  --day <number>   Run a specific day (1-3)\n", .{});
+    try stdout.print("  --day <number>   Run a specific day (1-5)\n", .{});
     try stdout.print("  --help           Show this help message\n\n", .{});
     try stdout.print("Examples:\n", .{});
     try stdout.print("  zig build run -- --day 1\n", .{});
@@ -66,8 +67,8 @@ pub fn main() !void {
                 std.process.exit(1);
             };
 
-            if (parsed_day < 1 or parsed_day > 3) {
-                try stdout.print("Error: day {d} is not implemented (available: 1-3)\n\n", .{parsed_day});
+            if (parsed_day < 1 or parsed_day > DAYS) {
+                try stdout.print("Error: day {d} is not implemented (available: 1-{d})\n\n", .{ parsed_day, DAYS });
                 try printHelp(stdout);
                 std.process.exit(1);
             }
@@ -87,6 +88,8 @@ pub fn main() !void {
             1 => try printDay(1, aoc25.dayOne, stdout),
             2 => try printDay(2, aoc25.dayTwo, stdout),
             3 => try printDay(3, aoc25.dayThree, stdout),
+            4 => try printDay(4, aoc25.dayFour, stdout),
+            5 => try printDay(5, aoc25.dayFive, stdout),
             else => unreachable,
         }
     } else {
