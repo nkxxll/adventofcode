@@ -9,6 +9,45 @@ pub const Task = enum {
     two,
 };
 
+const RangeIterator = struct {
+    start: usize,
+    index: usize,
+    end: usize,
+
+    pub fn next(self: *RangeIterator) ?usize {
+        if (self.index >= self.end) return null;
+        const value = self.index;
+        self.index += 1;
+        return value;
+    }
+
+    pub fn reset(self: *RangeIterator) void {
+        self.index = self.start;
+    }
+
+    pub fn init(start: usize, end: usize) RangeIterator {
+        return RangeIterator{ .start = start, .index = start, .end = end };
+    }
+};
+
+const Range = struct {
+    start: usize,
+    end: usize,
+
+    pub fn init(start: usize, end: usize) Range {
+        return Range{ .start = start, .end = end };
+    }
+
+    pub fn compare(context_type: @TypeOf(.{}), self: Range, other: Range) bool {
+        _ = context_type;
+        return self.start < other.start;
+    }
+
+    pub fn iter(self: Range) RangeIterator {
+        return RangeIterator.init(self.start, self.end);
+    }
+};
+
 fn openFile(day: u16, is_test: bool) !std.fs.File {
     var buf: [124]u8 = undefined;
     const file_name = if (!is_test) try std.fmt.bufPrint(&buf, "inputs/{d}.txt", .{day}) else try std.fmt.bufPrint(&buf, "inputs/{d}test.txt", .{day});
@@ -27,7 +66,6 @@ fn readAll(file: std.fs.File, allocator: Allocator) ![]const u8 {
 }
 
 pub fn dayFive(task: Task, is_test: bool) !usize {
-    _ = task;
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
     defer {
@@ -43,29 +81,58 @@ pub fn dayFive(task: Task, is_test: bool) !usize {
     var split = std.mem.splitSequence(u8, input, "\n\n");
     var ranges = std.mem.splitScalar(u8, split.first(), '\n');
     var ids = std.mem.splitScalar(u8, split.next().?, '\n');
-    var map = std.AutoHashMap(usize, bool).init(allocator);
-    defer map.deinit();
-    while (ids.next()) |id| {
-        const id_int = try std.fmt.parseInt(usize, id, 10);
-        try map.put(id_int, false);
-    }
 
-    while (ranges.next()) |range| {
-        var range_split = std.mem.splitScalar(u8, range, '-');
-        const first = try std.fmt.parseInt(usize, range_split.first(), 10);
-        const second = try std.fmt.parseInt(usize, range_split.next().?, 10);
-        for (first..second + 1) |idx| {
-            if (map.getPtr(idx)) |fresh| {
-                fresh.* = true;
+    switch (task) {
+        .one => {
+            outer: while (ids.next()) |id| {
+                const id_int = try std.fmt.parseInt(usize, id, 10);
+                ranges.reset();
+                while (ranges.next()) |range| {
+                    var range_split = std.mem.splitScalar(u8, range, '-');
+                    const first = try std.fmt.parseInt(usize, range_split.first(), 10);
+                    const second = try std.fmt.parseInt(usize, range_split.next().?, 10);
+                    // std.debug.print("{d}-{d} {d}\n", .{ first, second, id_int });
+                    if (id_int >= first and id_int <= second) {
+                        sum += 1;
+                        continue :outer;
+                    }
+                }
             }
-        }
-    }
+        },
+        .two => {
+            var range_list = try ArrayList(Range).initCapacity(allocator, 256);
+            defer range_list.deinit(allocator);
 
-    var keyIter = map.keyIterator();
-    while (keyIter.next()) |key| {
-        if (map.get(key.*)) |fresh| {
-            if (fresh) sum += 1;
-        }
+            while (ranges.next()) |range| {
+                var range_split = std.mem.splitScalar(u8, range, '-');
+                const first = try std.fmt.parseInt(usize, range_split.first(), 10);
+                const second = try std.fmt.parseInt(usize, range_split.next().?, 10);
+                try range_list.append(allocator, Range.init(first, second));
+            }
+            std.mem.sort(Range, range_list.items, .{}, Range.compare);
+
+            var i: usize = 0;
+            var j: usize = 0;
+            while (i < range_list.items.len) {
+                var r1 = range_list.items[i];
+                j = i + 1;
+                while (j < range_list.items.len) {
+                    const r2 = range_list.items[j];
+                    if (r2.start <= r1.end) {
+                        r1 = Range.init(r1.start, @max(r1.end, r2.end));
+                        range_list.items[i] = r1;
+                        _ = range_list.orderedRemove(j);
+                    } else {
+                        break;
+                    }
+                }
+                i += 1;
+            }
+
+            for (range_list.items) |item| {
+                sum += item.end - item.start + 1;
+            }
+        },
     }
     return sum;
 }
