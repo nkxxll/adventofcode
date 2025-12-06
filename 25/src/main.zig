@@ -1,11 +1,11 @@
 const std = @import("std");
 const aoc25 = @import("aoc25");
-const DAYS = 5;
+const DAYS = 6;
 
 fn printHelp(stdout: *std.io.Writer) !void {
     try stdout.print("Usage: zig build run -- --day <number>\n\n", .{});
     try stdout.print("Options:\n", .{});
-    try stdout.print("  --day <number>   Run a specific day (1-5)\n", .{});
+    try stdout.print("  --day <number>   Run a specific day (1-6)\n", .{});
     try stdout.print("  --help           Show this help message\n\n", .{});
     try stdout.print("Examples:\n", .{});
     try stdout.print("  zig build run -- --day 1\n", .{});
@@ -90,6 +90,7 @@ pub fn main() !void {
             3 => try printDay(3, aoc25.dayThree, stdout),
             4 => try printDay(4, aoc25.dayFour, stdout),
             5 => try printDay(5, aoc25.dayFive, stdout),
+            6 => try printDay(6, aoc25.daySix, stdout),
             else => unreachable,
         }
     } else {

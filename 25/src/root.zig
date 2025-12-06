@@ -9,6 +9,11 @@ pub const Task = enum {
     two,
 };
 
+const Operator = enum {
+    times,
+    add,
+};
+
 const RangeIterator = struct {
     start: usize,
     index: usize,
@@ -63,6 +68,53 @@ fn readAll(file: std.fs.File, allocator: Allocator) ![]const u8 {
 
     try reader_interface.readSliceAll(buffer);
     return buffer;
+}
+
+pub fn daySix(task: Task, is_test: bool) !usize {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    const allocator = gpa.allocator();
+    defer {
+        if (gpa.deinit() != .ok) {
+            std.debug.print("Memory leak detected!\n", .{});
+            std.process.exit(1);
+        }
+    }
+    const file = try openFile(6, is_test);
+    const input = try readAll(file, allocator);
+    defer allocator.free(input);
+    var sum: usize = 0;
+    var lines = std.mem.splitScalar(u8, input, '\n');
+
+    switch (task) {
+        .one => {
+            var first_t = std.mem.tokenizeScalar(u8, lines.first(), ' ');
+            var second_t = std.mem.tokenizeScalar(u8, lines.next().?, ' ');
+            var third_t = std.mem.tokenizeScalar(u8, lines.next().?, ' ');
+            var fourth_t = std.mem.tokenizeScalar(u8, lines.next().?, ' ');
+            var operator_t = std.mem.tokenizeScalar(u8, lines.next().?, ' ');
+            while (first_t.next()) |token| {
+                const first = try std.fmt.parseInt(usize, token, 10);
+                const second = try std.fmt.parseInt(usize, second_t.next().?, 10);
+                const third = try std.fmt.parseInt(usize, third_t.next().?, 10);
+                const fourth = try std.fmt.parseInt(usize, fourth_t.next().?, 10);
+                const operator = operator_t.next().?;
+                switch (operator[0]) {
+                    '+' => {
+                        sum += first + second + third + fourth;
+                    },
+                    '*' => {
+                        sum += first * second * third * fourth;
+                    },
+                    else => |c| {
+                        std.debug.print("char {c}\n", .{c});
+                        unreachable;
+                    },
+                }
+            }
+        },
+        .two => {},
+    }
+    return sum;
 }
 
 pub fn dayFive(task: Task, is_test: bool) !usize {
