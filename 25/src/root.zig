@@ -226,6 +226,15 @@ fn getNumber2(line: []const u8, i: usize, j: usize) !usize {
     return num;
 }
 
+//def get_biggest(bank:str, amount:int):
+//    number = ''
+//    for x in range(-amount+1,0):
+//        digit = str(max(map(int, bank[:x]))) # bank[:-12] on the first bank[:-11] on the second etc.
+//        pos = bank.find(digit)
+//        number = number + digit
+//        bank = bank[pos+1:]
+//    number = number + max(bank)
+//    return int(number)
 fn getNumber12(
     line: []const u8,
     i: usize,

@@ -5,6 +5,12 @@ use std::io::{BufRead, BufReader};
 const DAY: &str = "01"; // TODO: Fill the day
 const INPUT_FILE: &str = "input/01.txt";
 
+#[derive(PartialEq)]
+enum Part {
+    One,
+    Two,
+}
+
 const TEST: &str = "L68
 L30
 R48
@@ -16,10 +22,23 @@ L99
 R14
 L82";
 
+fn run<F, T>(f: F) -> anyhow::Result<T>
+where
+    F: FnOnce(BufReader<File>) -> anyhow::Result<T>,
+{
+    let file = File::open(INPUT_FILE)?;
+    let reader = BufReader::new(file);
+    f(reader)
+}
+
 fn main() -> Result<()> {
     println!("=== Day {DAY} Part 1 ===");
 
-    fn part1<R: BufRead>(reader: R) -> Result<usize> {
+    fn part2<R: BufRead>(reader: R) -> Result<usize> {
+        Ok(common(reader, Part::Two)?)
+    }
+
+    fn common<R: BufRead>(reader: R, part: Part) -> Result<usize> {
         let mut acc = 50;
         let mut sum = 0;
 
@@ -29,35 +48,55 @@ fn main() -> Result<()> {
 
             match dir {
                 'L' => {
+                    if part == Part::Two {
+                        if acc == 0 {
+                            sum -= 1;
+                        }
+                    }
                     acc -= n;
                     while acc < 0 {
                         acc += 100;
+                        if part == Part::Two {
+                            sum += 1;
+                        }
+                    }
+                    if acc == 0 {
+                        sum += 1;
                     }
                 }
                 'R' => {
                     acc += n;
                     while acc > 99 {
                         acc -= 100;
+                        if part == Part::Two {
+                            sum += 1;
+                        }
+                    }
+                    if part == Part::One {
+                        if acc == 0 {
+                            sum += 1;
+                        }
                     }
                 }
                 _ => panic!("Invalid direction"),
-            }
-            if acc == 0 {
-                sum += 1;
             }
         }
         Ok(sum)
     }
 
+    fn part1<R: BufRead>(reader: R) -> Result<usize> {
+        Ok(common(reader, Part::One)?)
+    }
+
     // TODO: Set the expected answer for the test input
     assert_eq!(3, part1(BufReader::new(TEST.as_bytes()))?);
-
-    let input_file = BufReader::new(File::open(INPUT_FILE)?);
-    let result = part1(input_file)?;
+    let result = run(part1)?;
     println!("Result = {}", result);
-    //endregion
 
-    //Part 2
+    println!("=== Day {DAY} Part 2 ===");
+    assert_eq!(6, part2(BufReader::new(TEST.as_bytes()))?);
+    let result2 = run(part2)?;
+    println!("Result = {}", result2);
 
     Ok(())
 }
