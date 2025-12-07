@@ -2,8 +2,12 @@ use anyhow::*;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
-const DAY: &str = "NN"; // TODO: Fill the day
 const INPUT_FILE: &str = "input/NN.txt";
+
+enum Part {
+    One,
+    Two,
+}
 
 const TEST: &str = "
 <TEST-INPUT>
