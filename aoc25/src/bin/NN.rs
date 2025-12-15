@@ -4,6 +4,7 @@ use std::io::{BufRead, BufReader};
 
 const INPUT_FILE: &str = "input/NN.txt";
 
+#[allow(dead_code)]
 enum Part {
     One,
     Two,
